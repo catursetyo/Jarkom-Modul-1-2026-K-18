@@ -1,30 +1,39 @@
-mkdir -p /root
-cat > /root/setup-network.sh << 'EOF'
-#!/bin/bash
+#!/bin/sh
+# /root/setup-network.sh  --  Router (Lain)  [debinet / Debian]
 
-# eth0 -> ke NAT1 (static, sesuai default GNS3 NAT1)
-ip link set eth0 up
-ip addr add 192.168.122.2/24 dev eth0
-ip route add default via 192.168.122.1
-echo "nameserver 8.8.8.8" > /etc/resolv.conf
+set -u
 
-# eth1 -> ke Switch1 (Alice & Mika)
-ip link set eth1 up
-ip addr add 192.220.1.1/24 dev eth1
+UPLINK_IF="eth0"
+UPLINK_IP="192.168.122.2/24"
+UPLINK_GW="192.168.122.1"
+DNS_SERVER="8.8.8.8"
 
-# eth2 -> ke Switch2 (Chisa)
-ip link set eth2 up
-ip addr add 192.220.2.1/24 dev eth2
+# iface:ip/prefix  -> satu kaki Router di tiap subnet (gateway bagi client)
+LAN="eth1:192.220.1.1/24 eth2:192.220.2.1/24 eth3:192.220.3.1/24"
 
-# eth3 -> ke Switch3 (Knights & Eiri)
-ip link set eth3 up
-ip addr add 192.220.3.1/24 dev eth3
+# --- Uplink ke NAT1 (internet) ---
+ip link set "$UPLINK_IF" up
+ip addr flush dev "$UPLINK_IF"
+ip addr add "$UPLINK_IP" dev "$UPLINK_IF"
+ip route replace default via "$UPLINK_GW" dev "$UPLINK_IF"
+echo "nameserver $DNS_SERVER" > /etc/resolv.conf
 
-# Aktifkan IP forwarding (routing antar subnet)
+# --- Kaki ke tiap Switch ---
+for entry in $LAN; do
+    iface="${entry%%:*}"
+    addr="${entry#*:}"
+    ip link set "$iface" up
+    ip addr flush dev "$iface"
+    ip addr add "$addr" dev "$iface"
+done
+
+# --- Routing antar subnet ---
 echo 1 > /proc/sys/net/ipv4/ip_forward
 
-# NAT/masquerade supaya client di subnet bisa akses internet lewat eth0
-iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-EOF
+# --- NAT: tambah rule hanya kalau belum ada (hindari duplikat) ---
+if ! iptables -t nat -C POSTROUTING -o "$UPLINK_IF" -j MASQUERADE 2>/dev/null; then
+    iptables -t nat -A POSTROUTING -o "$UPLINK_IF" -j MASQUERADE
+fi
 
-chmod +x /root/setup-network.sh
+echo "[OK] Router network configured."
+ip -br a
