@@ -77,7 +77,7 @@ Untuk menghubungkan entitas di The Wired, **Lain** yang berperan sebagai Router 
 - **Switch 2**: Menghubungkan client **Chisa** (Subnet `192.220.2.0/24`).
 - **Switch 3**: Menghubungkan client **Knights** dan **Eiri** (Subnet `192.220.3.0/24`).
 
-![](assets/01-topologi.png)
+![Topologi Jaringan GNS3 Modul 1 Jarkom 2026](assets/01-topologi.png)
 
 Topologi dibangun di GNS3 dengan rincian komponen:
 1. **NAT1**: Node cloud bawaan GNS3 sebagai pintu gerbang menuju jaringan internet nyata (segmen `192.168.122.0/24`).
@@ -122,7 +122,7 @@ ping -c 3 8.8.8.8
 nslookup google.com
 ```
 
-![](assets/02-router-inet.png)
+![Hasil Pengujian Konektivitas Internet dan DNS di Router Lain](assets/02-router-inet.png)
 
 Hasil pengujian membuktikan Router Lain dapat berkomunikasi secara normal dengan jaringan luar (0% packet loss).
 
@@ -206,12 +206,15 @@ Pengujian ping dilakukan melintasi switch yang berbeda untuk memastikan tabel ro
    ping -c 3 192.220.2.2
    ping -c 3 192.220.3.2
    ```
+
+   ![Pengujian Ping dari Alice ke Chisa dan Knights](assets/03-alice-ping-client.png)
+
 2. **Uji dari Knights (Subnet 3) ke Alice (Subnet 1):**
    ```sh
    ping -c 3 192.220.1.2
    ```
 
-![](assets/03-ping-antar-client.png)
+   ![Pengujian Ping dari Knights ke Alice](assets/03-knights-ping-alice.png)
 
 Semua paket ICMP sukses di-reply dengan status RTT stabil dan 0% packet loss.
 
@@ -260,7 +263,7 @@ nslookup google.com
 apk update
 ```
 
-![](assets/04-client-internet.png)
+![Hasil Pengujian Akses Internet dan DNS Resolver dari Client](assets/04-client-internet.png)
 
 Client berhasil melakukan query DNS ke `8.8.8.8` dan mengunduh paket melalui gateway Router Lain.
 
@@ -302,7 +305,7 @@ chmod +x /root/cek_status.sh
 /root/cek_status.sh
 ```
 
-![](assets/05-cek-status-router.png)
+![Output Eksekusi Script cek_status.sh di Router Lain](assets/05-cek-status-router.png)
 
 Output menampilkan status 4 interface (`eth0`, `eth1`, `eth2`, `eth3`) dalam kondisi UP dengan IP masing-masing, serta tabel NAT `POSTROUTING` yang memuat rule `MASQUERADE`.
 
@@ -471,7 +474,7 @@ Pengujian dilakukan langsung menggunakan klien FTP:
    -rw-r--r--    1 1000     101            50 Sep 15 18:05 signal_alice.txt
    226 Directory send OK.
    ```
-   ![](assets/07-vsftpd-alice.png)
+   ![Uji Akun Alice (Read & Write) pada vsFTPd Chisa](assets/07-vsftpd-alice.png)
 
 2. **Uji Akun Mika (Read-Only):**
    Mika berhasil login (`230 Login successful`), dapat melihat berkas `signal_alice.txt`, namun ketika mencoba mengunggah berkas, server menolak dengan kode `550`:
@@ -493,7 +496,7 @@ Pengujian dilakukan langsung menggunakan klien FTP:
    200 PORT command successful. Consider using PASV.
    550 Permission denied.
    ```
-   ![](assets/07-vsftpd-mika.png)
+   ![Uji Akun Mika (Read-Only) pada vsFTPd Chisa](assets/07-vsftpd-mika.png)
 
 3. **Uji Akun Eiri (Blacklist):**
    Saat user `eiri` mencoba login, vsFTPd langsung menolak autentikasi sesuai daftar `user_list`:
@@ -504,7 +507,7 @@ Pengujian dilakukan langsung menggunakan klien FTP:
    530 Permission denied.
    ftp: Login failed.
    ```
-   ![](assets/07-vsftpd-eiri.png)
+   ![Uji Akun Eiri (Blacklist Login Ditolak 530) pada vsFTPd Chisa](assets/07-vsftpd-eiri.png)
 
 ---
 
@@ -525,6 +528,8 @@ Berkas capture lengkap: [knights-report.pcapng](captures/knights-report.pcapng)
    ftp> put knights_report.txt
    ftp> quit
    ```
+
+   ![Eksekusi Upload Berkas di Terminal Knights](assets/08_put-knights-report.png)
 
 #### B. Hasil Capture Wireshark (`ftp || ftp-data`)
 
