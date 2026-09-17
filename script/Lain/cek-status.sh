@@ -1,5 +1,4 @@
 #!/bin/sh
-# /root/cek_status.sh  --  Router (Lain)  [debinet / Debian]
 
 set -u
 

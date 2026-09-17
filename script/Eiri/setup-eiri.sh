@@ -1,6 +1,4 @@
 #!/bin/sh
-# /root/setup-network.sh  --  Eiri  [alpinet / Alpine]
-# Switch3 - subnet 192.220.3.0/24
 
 set -u
 

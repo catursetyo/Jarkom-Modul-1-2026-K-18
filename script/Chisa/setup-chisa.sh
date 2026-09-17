@@ -1,6 +1,4 @@
 #!/bin/sh
-# /root/setup-network.sh  --  Chisa  [alpinet / Alpine]
-# Switch2 - subnet 192.220.2.0/24
 
 set -u
 

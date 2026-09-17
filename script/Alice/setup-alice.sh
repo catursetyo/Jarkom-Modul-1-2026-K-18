@@ -1,6 +1,4 @@
 #!/bin/sh
-# /root/setup-network.sh  --  Alice  [alpinet / Alpine]
-# Switch1 - subnet 192.220.1.0/24
 
 set -u
 
