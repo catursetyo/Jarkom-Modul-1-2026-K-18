@@ -886,3 +886,338 @@ Berdasarkan analisis arsitektur protokol, terdapat 3 alasan fundamental mengapa 
 
 ---
 
+# Laporan Resmi
+
+
+# Soal 14
+## I. HASIL ANALISIS & PEMBAHASAN
+
+Berdasarkan analisis log paket `soal14_wired_bruteforce.pcapng`, diperoleh temuan utama pada **TCP Stream 59** sebagai berikut:
+
+### 1. Tabel Artefak & Identifikasi Paket
+
+| Parameter Insiden | Nilai Artefak | Keterangan & Analisis |
+| :--- | :--- | :--- |
+| **Filter Wireshark** | `tcp.stream eq 59` | Stream yang memuat percakapan HTTP saat login berhasil |
+| **IP Sumber (Penyerang)** | `172.26.7.20` | Alamat IP penyerang yang menjalankan alat fuzzing |
+| **IP Tujuan (Server)** | `172.26.7.100` | Alamat IP web server target |
+| **Port Tujuan** | `8080` (TCP/HTTP) | Service HTTP berjalan pada port kustom 8080 |
+| **Metode HTTP** | `POST /login.php` | Pengiriman data form login melalui metode HTTP POST |
+| **User-Agent Tools** | `Fuzz Faster U Fool v2.1.0-dev` | Alat otomatisasi *brute-force* yang digunakan penyerang (`ffuf`) |
+| **Username Terkompromi** | `lain_admin` | Nama pengguna akun target yang diserang |
+| **Password Ditemukan** | `wired_pr0tocol_7` | Kata sandi valid yang lolos autentikasi |
+| **Status Response HTTP** | `200 OK` | Indikasi bahwa permintaan diterima dan sukses diproses |
+| **Web Server Software** | `Apache/2.4.62` | Teridentifikasi dari HTTP Header `Server` |
+| **Runtime Environment** | `PHP/8.3.14` | Teridentifikasi dari HTTP Header `X-Powered-By` |
+
+### 2. Rekonstruksi Payload Stream (`Follow TCP Stream 59`)
+
+Berikut adalah bukti utuh rekaman transaksi *request* dan *response* antara penyerang dan server:
+
+```http
+POST /login.php HTTP/1.1
+Host: 172.26.7.100:8080
+User-Agent: Fuzz Faster U Fool v2.1.0-dev
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 45
+
+username=lain_admin&password=wired_pr0tocol_7
+
+HTTP/1.1 200 OK
+Server: Apache/2.4.62
+Content-Type: text/html; charset=UTF-8
+Content-Length: 35
+X-Powered-By: PHP/8.3.14
+
+<h1>Success! Login successful.</h1>
+
+```
+
+### 3. Memasukan kedalam nc
+
+Memasukan semua informasi yang sudah kita dapatkan:
+![alt text](assets/Soal14_nc.PNG)
+
+# Soal 15
+
+#### 1. Identifikasi USB Device Descriptor
+* **Langkah:** Membuka file `wired_usb_hid.pcap` di Wireshark, kemudian menerapkan filter **usb.idVendor || usb.idProduct** untuk mencari paket respon deskriptor.
+* **Hasil:**
+  * **Vendor ID (idVendor):** `0x046d` (Logitech, Inc.)
+  * **Product ID (idProduct):** `0xc31c` (Keyboard K120)
+
+#### 2. Identifikasi Device Address dan Filter Data HID
+* **Langkah:** Memeriksa header **USB URB** pada paket transfer data *interrupt* (`URB_INTERRUPT`).
+* **Hasil:**
+  * **Device Address:** `7`
+  * Filter Wireshark yang digunakan untuk mengisolasi data tombol:
+    ```text
+    usb.capdata && usb.device_address == 7
+    ````
+      ![alt text](assets/soal15_device_addres.PNG)
+
+#### 3. Ekstraksi dan Menerjemahkan Keystroke Payload
+* **Langkah:** Mengekstrak deretan byte dari *Leftover Capture Data* menggunakan `tshark` pada Command Prompt (CMD) Windows:
+  ```cmd
+  tshark.exe -r "wired_usb_hid.pcap" -Y "usb.capdata && usb.device_address == 7" -T fields -e usb.capdata
+  ```
+* **Metode Decoding:**
+  * **Byte 1:** Status modifier (jika `02`, maka tombol `Shift` aktif).
+  * **Byte 3:** USB HID Usage ID (Keycode).
+  * Paket `0000000000000000` menandakan kondisi tombol dilepas (*key release*).
+
+**Tabel Rekonstruksi Keystroke Payload (USB HID Data):**
+
+| No. | Raw Hex Payload | Byte 1 (Modifier) | Byte 3 (HID Code) | Interpretasi Tombol | Karakter Terjemahan |
+| :---: | :--- | :---: | :---: | :--- | :---: |
+| 1 | `02001a0000000000` | `02` (Shift) | `1a` | Key Press (`w` + Shift) | **W** |
+| 2 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 3 | `00000c0000000000` | `00` | `0c` | Key Press (`i`) | **i** |
+| 4 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 5 | `0000150000000000` | `00` | `15` | Key Press (`r`) | **r** |
+| 6 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 7 | `0000080000000000` | `00` | `08` | Key Press (`e`) | **e** |
+| 8 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 9 | `0000070000000000` | `00` | `07` | Key Press (`d`) | **d** |
+| 10 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 11 | `02002d0000000000` | `02` (Shift) | `2d` | Key Press (`-` + Shift) | **_** |
+| 12 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 13 | `0200130000000000` | `02` (Shift) | `13` | Key Press (`p` + Shift) | **P** |
+| 14 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 15 | `0000150000000000` | `00` | `15` | Key Press (`r`) | **r** |
+| 16 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 17 | `0000120000000000` | `00` | `12` | Key Press (`o`) | **o** |
+| 18 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 19 | `0000170000000000` | `00` | `17` | Key Press (`t`) | **t** |
+| 20 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 21 | `0000120000000000` | `00` | `12` | Key Press (`o`) | **o** |
+| 22 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 23 | `0000060000000000` | `00` | `06` | Key Press (`c`) | **c** |
+| 24 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 25 | `0000120000000000` | `00` | `12` | Key Press (`o`) | **o** |
+| 26 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 27 | `00000f0000000000` | `00` | `0f` | Key Press (`l`) | **l** |
+| 28 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 29 | `02002d0000000000` | `02` (Shift) | `2d` | Key Press (`-` + Shift) | **_** |
+| 30 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 31 | `0000240000000000` | `00` | `24` | Key Press (`7`) | **7** |
+| 32 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 33 | `02002d0000000000` | `02` (Shift) | `2d` | Key Press (`-` + Shift) | **_** |
+| 34 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 35 | `00000c0000000000` | `00` | `0c` | Key Press (`i`) | **i** |
+| 36 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 37 | `0000160000000000` | `00` | `16` | Key Press (`s`) | **s** |
+| 38 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 39 | `02002d0000000000` | `02` (Shift) | `2d` | Key Press (`-` + Shift) | **_** |
+| 40 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 41 | `0000040000000000` | `00` | `04` | Key Press (`a`) | **a** |
+| 42 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 43 | `00000f0000000000` | `00` | `0f` | Key Press (`l`) | **l** |
+| 44 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 45 | `00000c0000000000` | `00` | `0c` | Key Press (`i`) | **i** |
+| 46 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 47 | `0000190000000000` | `00` | `19` | Key Press (`v`) | **v** |
+| 48 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 49 | `0000080000000000` | `00` | `08` | Key Press (`e`) | **e** |
+| 50 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 51 | `02002d0000000000` | `02` (Shift) | `2d` | Key Press (`-` + Shift) | **_** |
+| 52 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 53 | `00001f0000000000` | `00` | `1f` | Key Press (`2`) | **2** |
+| 54 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 55 | `0000270000000000` | `00` | `27` | Key Press (`0`) | **0** |
+| 56 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 57 | `00001f0000000000` | `00` | `1f` | Key Press (`2`) | **2** |
+| 58 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+| 59 | `0000230000000000` | `00` | `23` | Key Press (`6`) | **6** |
+| 60 | `0000000000000000` | `00` | `00` | Key Release | *-* |
+
+
+
+### IV. HASIL AKHIR (VALIDASI SERVER)
+
+Seluruh parameter yang terekstrak divalidasi ke socket server menggunakan Netcat (`nc [IP_Group] 3402`):
+
+* **Vendor ID:** `046d`
+* **Product ID:** `c31c`
+* **Device Address:** `7`
+* **Secret Message / Flag:** `Wired_Protocol_7_is_alive_2026`
+
+-- --
+# Soal 16
+
+## 1. Ringkasan Kasus & Temuan Utama
+Dalam analisis berkas tangkapan layar paket (`wired_ftp_theft.pcap`), teridentifikasi adanya aktivitas akses FTP tak dikenal yang mengunduh berkas berbahaya (`knights_payload.exe`). Berdasarkan analisis protokol FTP dan penelusuran *TCP Stream*, didapatkan rincian informasi server serta kredensial penyerang sebagai berikut:
+
+| Parameter | Hasil Analisis / Nilai |
+| :--- | :--- |
+| **FTP Server IP Address** | `198.51.100.7` |
+| **FTP Server Software Banner** | `vsftpd 3.0.5` |
+| **Attacker Username** | `knights_agent` |
+| **Attacker Password** | `N4v1_s3cur3_2026` |
+| **Malware File Name** | `knights_payload.exe` |
+| **Malware File Size** | `524288` bytes |
+
+## 2. Langkah-Langkah Analisis (Wireshark Workflow)
+
+### Langkah 1: Filter Lalu Lintas FTP
+Buka file pcap pada aplikasi Wireshark, kemudian gunakan display filter untuk memperlihatkan lalu lintas khusus protokol FTP:
+```text
+ftp
+```
+Atau untuk langsung menuju permintaan pengunduhan berkas:
+```text
+ftp.request.command == "RETR"
+```
+### Langkah 2: Identifikasi Sesi Penyerang
+Pada daftar paket yang terfilter, cari lalu lintas dengan perintah `RETR knights_payload.exe` atau respons server `220 Welcome to Wired FTP Server (vsftpd 3.0.5)`.
+![alt text](assets/Soal19_filter.PNG)
+
+### Langkah 3: Mengikuti Alur Percakapan (*Follow TCP Stream*)
+1. Klik kanan pada salah satu baris paket dari sesi login `knights_agent`.
+2. Pilih **Follow** -> **TCP Stream**.
+3. Dari jendela *TCP Stream*, diperoleh rekaman percakapan sebagai berikut:
+![alt text](assets/soal16_TCP.PNG)
+
+## 3. Ekstraksi Data Kunci
+
+1. **FTP Server IP Address**: `198.51.100.7`
+   * Teridentifikasi dari parameter *Entering Passive Mode* `(198,51,100,7,...)` serta IP tujuan paket FTP.
+2. **FTP Software Banner**: `vsftpd 3.0.5`
+   * Terbaca pada kode respons awal server `220 Welcome to Wired FTP Server (vsftpd 3.0.5)`.
+3. **Kredensial Penyerang**:
+   * Username: `knights_agent` (`USER knights_agent`)
+   * Password: `N4v1_s3cur3_2026` (`PASS N4v1_s3cur3_2026`)
+4. **Ukuran File Malware**: `524288` bytes
+   * Tertera pada respons permohonan ukuran file `213 524288` serta konteks koneksi data `(524288 bytes)`.
+
+## 4. Memasukan kedalam nc
+Memasukan semua informasi yang sudah kita dapatkan:
+![alt text](assets/Soal16_nc.PNG)
+
+-- --
+# Soal 17
+
+### 1. Informasi Praktikum
+* **File Analisis:** `wired_http_c2.pcap`
+* **Socket Server Validator:** `10.4.89.246:3404`
+* **Status:** Selesai (Flag Berhasil Didapatkan)
+
+---
+
+### 2. Filter Wireshark yang Digunakan
+Untuk mengisolasi lalu lintas unduhan malware pada protokol HTTP, filter yang diterapkan pada Wireshark adalah:
+```wireshark
+http.host == "wired-update.net"
+```
+
+---
+
+### 3. Hasil Analisis Forensik & Validasi Server
+
+Berikut adalah ringkasan pertanyaan, jawaban dari hasil analisis PCAP, serta transkrip interaksi dengan socket server validator:
+
+```text
+nc 10.4.89.246 3404
+
+===== Soal 17 - Protocol 7: HTTP Malware Retrieval =====
+Difficulty: Hard
+
+What is the domain name (Host) where the suspicious files were downloaded from?
+Format: domain.com
+> wired-update.net
+
+What is the IP address of the web server hosting the malicious files?
+Format: IP
+> 203.0.113.42
+
+What is the filename of the executable malware payload downloaded by the client?
+Format: file.exe
+> navi_agent.exe
+
+What is the HTTP status response code returned when downloading navi_agent.exe?
+Format: int
+> 200
+
+Congratulations! Here is your flag: KOMJAR26{Navi_C2_D0wnl04d_w4JTL2z3h84M3Q6wOCq9jpwUZ}
+```
+-- --
+# Soal 18
+
+### 1. Langkah-Langkah Analisis
+1. **Membuka File Capture:**
+   Membuka file `wired_smb_transfer.pcapng` menggunakan perangkat lunak analisis paket (Wireshark).
+2. **Penerapan Filter & Pencarian String:**
+   * Menggunakan filter `smb` untuk melihat lalu lintas SMB.
+   * Melakukan pencarian *packet bytes/string* (`Ctrl + F`) dengan kata kunci seperti `ADMIN$`, `wired_trojan_payload.exe`, dan string payload terkait untuk menemukan paket transfer data eksploitasi.
+
+---
+
+### 2. Hasil Analisis & Validasi Socket Server
+Berdasarkan hasil pengujian dan interaksi validasi pada socket server (`nc 10.4.89.246 3405`), berikut adalah rincian jawaban yang terbukti benar:
+
+| Parameter Analisis | Nilai / Jawaban |
+| :--- | :--- |
+| **Protokol Jaringan** | `smb` |
+| **IP Sumber (Source Host)** | `10.7.3.100` |
+| **IP Korban (Victim Host)** | `10.7.1.50` |
+| **Target Share / Direktori** | `ADMIN$` |
+| **Filename Executable Malware** | `wired_trojan_payload.exe` |
+
+-- --
+
+# Soal 19
+
+### **1. Langkah-Langkah Pengerjaan**
+1. **Membuka File PCAP:** 
+   * Membuka aplikasi Wireshark dan memuat file `wired_smtp_threat.pcap`.
+2. **Filter Berdasarkan TCP Stream:** 
+   * Menggunakan filter `tcp.stream eq 6` untuk melihat percakapan penuh antara penyerang (`attacker@darkwired.net`) dan korban (`victim@protocol7.co.jp`).
+   ![alt text](assets/Soal19_filter.PNG)
+3. **Analisis Payload Pesan Email:** 
+   * Mengekstrak informasi dari baris perintah SMTP (`MAIL FROM`, `RCPT TO`) dan bagian isi pesan (*DATA*) yang memuat teks ancaman pemerasan.
+   ![alt text](assets/Soal19_RTCP.PNG)
+
+4. **Validasi Socket Server:** 
+   * Menghubungkan terminal ke server target menggunakan perintah `nc [IP_Group] 3406` untuk menyerahkan hasil temuan analisis.
+
+---
+
+### **4. Hasil Temuan Analisis**
+
+Berdasarkan hasil penelusuran pada `tcp.stream eq 6`, ditemukan data-data berikut:
+
+* **Alamat Email Korban:** `victim@protocol7.co.jp`
+* **Password Korban yang Diklaim Bocor:** `pr0tocol_7_user`
+* **Jenis Malware yang Diinfeksikan:** *Private ransomware*
+* **Batas Waktu yang Diberikan:** 72 jam (3 hari)
+* **MailClientID:** `7719980706`
+* **Alamat Dompet Bitcoin (Ancaman):** `bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh`
+
+    ![alt text](assets/Soal19_nc.PNG)
+
+-- --
+# Soal 20
+### **1. Langkah Pengerjaan dan Analisis**
+
+#### **A. Konfigurasi Dekripsi TLS di Wireshark**
+1. Membuka aplikasi **Wireshark** dan memuat file tangkapan paket `wired_tls_decrypt.pcapng`.
+2. Mengonfigurasi kunci dekripsi melalui menu **Edit > Preferences > Protocols > TLS**, lalu memasukkan file `keyslogfile.txt` pada kolom *(Pre)-Master-Secret log filename* agar Wireshark dapat mendekripsi payload HTTPS/TLS secara transparan.
+
+#### **B. Identifikasi Parameter Sesi**
+Berdasarkan hasil analisis paket setelah dekripsi berhasil, didapatkan detail sebagai berikut:
+* **Versi Protokol TLS:** `TLSv1.2` (Tergambar melalui mekanisme negosiasi handshake dan file `CLIENT_RANDOM`).
+* **Nama Domain (SNI / Host):** `example.com` (Diperoleh dari ekstensi *Server Name Indication* pada paket *Client Hello*).
+* **Alamat IP Server HTTPS:** `93.184.216.34` (IP tujuan komunikasi klien).
+* **User-Agent Klien:** `curl/7.62.0` (Dideteksi melalui *header* HTTP di dalam aliran stream terdekripsi).
+* **Metode & Path HTTP:** `HEAD /` (Permintaan HTTP tersembunyi yang digunakan dalam sesi komunikasi tersebut).
+
+---
+
+### **2. Validasi & Hasil Akhir**
+Setelah seluruh parameter diidentifikasi dengan benar, jawaban divalidasi ke socket server target menggunakan perintah `nc`:
+```bash
+nc 10.4.89.246 3407
+```
+Dengan memasukkan parameter secara berurutan (`TLSv1.2`, `example.com`, `93.184.216.34`, `curl/7.62.0`, dan `HEAD /`), server mengonfirmasi kebenaran data dan memberikan *flag* penutup.
+![alt text](assets/Soal20_nc.PNG)
+
