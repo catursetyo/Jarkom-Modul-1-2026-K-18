@@ -40,20 +40,7 @@
 
 Sesuai tema *Serial Experiments Lain*, entitas **Lain** bertindak sebagai **Router**, sedangkan entitas lainnya (**Alice, Mika, Chisa, Knights, Eiri**) bertindak sebagai **Client**. Jaringan dibagi ke dalam 3 switch dengan alokasi prefix IP kelompok **K-18** (`192.220.0.0/16`).
 
-```
-                 Internet
-                    │
-                 [ NAT1 ]
-                    │ eth0 192.168.122.2/24 (gw 192.168.122.1)
-              ┌─────────────┐
-              │  Lain       │  router, image debinet
-              │  (Router)   │  ip_forward=1 + MASQUERADE
-              └─┬────┬───┬──┘
-        eth1 .1.1│eth2│.2.1│eth3 .3.1
-             SW1 │    │SW2 │SW3
-        ┌────────┴┐ ┌─┴──┐┌┴──────────┐
-      Alice    Mika Chisa Knights  Eiri
-```
+![Topologi Jaringan GNS3 K-18](assets/01-topologi.png)
 
 ### Tabel Pengalamatan Node
 
