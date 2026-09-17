@@ -1,7 +1,5 @@
 #!/bin/sh
 # /root/cek_status.sh  --  Router (Lain)  [debinet / Debian]
-# Poin 5: bukti konfigurasi jaringan bertahan setelah reboot.
-# Menampilkan ringkasan interface + status tabel NAT.
 
 set -u
 

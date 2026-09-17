@@ -1,6 +1,6 @@
 #!/bin/sh
 # ==============================================================================
-# Setup Layanan SSH (Port 22) dan HTTP (Port 80) di Node Knights - Soal 12 & 13
+# Setup Layanan SSH (Port 22) dan HTTP (Port 80) di Node Knights
 # Subnet: 192.220.3.0/24 | IP Knights: 192.220.3.2
 # ==============================================================================
 

@@ -1,6 +1,6 @@
 #!/bin/sh
 # ==============================================================================
-# Setup OpenSSH Server di Node Knights (The Wired) - Soal 13
+# Setup OpenSSH Server di Node Knights (The Wired)
 # Subnet: 192.220.3.0/24 | IP Knights: 192.220.3.2
 # ==============================================================================
 

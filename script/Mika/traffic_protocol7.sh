@@ -6,7 +6,6 @@
 # ============================================
 
 # `dig` tidak disediakan busybox (alpinet), jadi pasang bind-tools kalau belum ada.
-# Butuh internet -> jalankan setelah /root/setup-network.sh.
 if ! command -v dig >/dev/null 2>&1; then
     apk add --no-cache bind-tools || echo "[!] bind-tools gagal dipasang - baris dig dilewati"
 fi

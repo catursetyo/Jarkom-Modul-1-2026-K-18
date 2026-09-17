@@ -1,6 +1,6 @@
 #!/bin/sh
 # ==============================================================================
-# Setup Telnet Server di Node Chisa (The Wired) - Soal 11
+# Setup Telnet Server di Node Chisa (The Wired)
 # Subnet: 192.220.2.0/24 | IP Chisa: 192.220.2.2
 # ==============================================================================
 

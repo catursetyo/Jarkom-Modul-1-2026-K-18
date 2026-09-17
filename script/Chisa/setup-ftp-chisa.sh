@@ -8,7 +8,6 @@
 #                   eiri  = blacklist (login ditolak)
 #   Password      : alice123 / mika123 / eiri123
 #
-# Jalankan SETELAH /root/setup-network.sh (butuh internet untuk `apk add`).
 
 set -u
 
